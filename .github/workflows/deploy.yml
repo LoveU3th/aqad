@@ -1,0 +1,30 @@
+# .github/workflows/deploy.yml
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches:
+      - main # Or your default branch
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write # Required for Cloudflare Pages deployments
+    name: Publish to Cloudflare Pages
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/pages-action@v1 # Use the official Cloudflare Pages action
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: 'safety-training-system' # Replace with your Pages project name
+          directory: '.' # Or 'public' if your static assets are there and _worker.js is in functions/
+          # Optional: Branch to deploy (defaults to the branch that triggered the workflow)
+          # branch: 'main' 
+          # Optional: Specify the Functions directory if it's not 'functions' at the root
+          # functionsDirectory: 'functions'
