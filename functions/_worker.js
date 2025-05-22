@@ -1,20 +1,12 @@
 // functions/_worker.js
-import { handleApiRequest } from './router';
 import { authenticateAdmin, createAuthenticationResponse } from './services/authService';
 import { handleAdminRequest, handleAppRequest, handleAssetRequest } from './handlers/pageHandlers';
 
 /**
  * Cloudflare Pages Functions entry point.
- * This function will be invoked for every request.
+ * This function will be invoked for requests that don't match specific route files.
  */
 export async function onRequest(context) {
-  // context.request is the Request object
-  // context.env contains bindings (KV, DO, R2, Vars, Secrets)
-  // context.params contains route parameters (e.g. /books/[id])
-  // context.waitUntil extends the lifetime of the request
-  // context.next sends the request to the next function in the chain (if any)
-  // context.functionPath is the path to the function file
-  
   const { request, env } = context;
   const url = new URL(request.url);
   const path = url.pathname;
@@ -23,15 +15,12 @@ export async function onRequest(context) {
     request,
     url,
     path,
-    env, // Pass the full env object from Pages context
-    // Add other context properties if needed by handlers, e.g., context.params
+    env,
   };
 
   try {
-    // 1. API 请求处理
-    if (path.startsWith('/api/')) {
-      return await handleApiRequest(requestContext);
-    }
+    // 1. API 请求会被 functions/api/ 目录下的相应文件处理
+    // Routes 处理（该处理已由各个专门的路由文件接管）
 
     // 2. 管理页面请求
     if (path.startsWith('/admin')) {
@@ -43,20 +32,11 @@ export async function onRequest(context) {
     }
 
     // 3. 静态资源请求 (Pages handles most static assets from the output directory)
-    // This handler is for cases where the Worker might need to serve specific assets
-    // not covered by the standard Pages static asset serving.
-    // For a typical Pages setup, this might not be strictly necessary if all assets are in the build output dir.
     if (path.includes('.') && !path.endsWith('.html')) {
-      // Cloudflare Pages will serve static assets from your build output directory first.
-      // This function would only be hit if the asset is not found by Pages static serving
-      // and the request falls through to the `_worker.js` catch-all.
-      // You might want to return a 404 or proxy to an asset store if needed.
-      // For now, let's assume Pages handles static assets and this is a fallback.
-      return await handleAssetRequest(requestContext); 
+      return await handleAssetRequest(requestContext);
     }
 
-    // 4. 主应用请求（默认返回主HTML via handleAppRequest）
-    // For SPA, all non-API, non-asset routes typically serve the main index.html
+    // 4. 主应用请求（默认返回主HTML）
     return await handleAppRequest(requestContext);
 
   } catch (error) {
