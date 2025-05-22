@@ -1,18 +1,30 @@
 // functions/handlers/pageHandlers.js
 
 /**
- * 处理主应用请求 (重定向到静态index.html)
+ * 处理主应用请求 (直接返回HTML内容)
  * @param {Object} context - 请求上下文
- * @returns {Response} - 重定向响应
+ * @returns {Response} - HTML响应
  */
 export async function handleAppRequest(context) {
-  // 将请求重定向到根目录，让Cloudflare Pages提供静态的index.html文件
-  // 注意：通常来说，Cloudflare Pages会自动处理对根路径的请求并提供public/index.html
-  // 这个函数只是作为备用，以防直接访问了由Functions处理的非API路径
-  return new Response(null, {
-    status: 302, // 临时重定向
+  // 直接返回HTML内容，不再重定向
+  // 注意：通常Cloudflare Pages应该直接提供public/index.html，但如果没有被正确处理，这里作为备份
+  return new Response(`<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="0;url=/index.html" />
+    <title>安全管理交互学习平台</title>
+</head>
+<body>
+    <p>正在加载页面，请稍候...</p>
+    <script>
+        window.location.href = "/index.html";
+    </script>
+</body>
+</html>`, {
     headers: {
-      'Location': '/',
+      'Content-Type': 'text/html;charset=UTF-8',
       'Cache-Control': 'no-cache'
     }
   });
@@ -25,11 +37,24 @@ export async function handleAppRequest(context) {
  */
 export async function handleAdminRequest(context) {
   // Authentication should have been handled before calling this function.
-  // 重定向到根目录，让前端JS处理管理面板的渲染
-  return new Response(null, {
-    status: 302, // 临时重定向
+  // 返回HTML并重定向到admin路由
+  return new Response(`<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="0;url=/index.html#admin" />
+    <title>安全管理交互学习平台 - 管理页面</title>
+</head>
+<body>
+    <p>正在加载管理页面，请稍候...</p>
+    <script>
+        window.location.href = "/index.html#admin";
+    </script>
+</body>
+</html>`, {
     headers: {
-      'Location': '/#admin',
+      'Content-Type': 'text/html;charset=UTF-8',
       'Cache-Control': 'no-cache'
     }
   });
