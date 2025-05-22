@@ -1,16 +1,19 @@
 // functions/handlers/pageHandlers.js
-import { INDEX_HTML } from '../htmlContent'; // Assuming INDEX_HTML is in htmlContent.js
 
 /**
- * 处理主应用请求 (通常是返回 index.html)
+ * 处理主应用请求 (重定向到静态index.html)
  * @param {Object} context - 请求上下文
- * @returns {Response} - HTML响应
+ * @returns {Response} - 重定向响应
  */
 export async function handleAppRequest(context) {
-  return new Response(INDEX_HTML, {
+  // 将请求重定向到根目录，让Cloudflare Pages提供静态的index.html文件
+  // 注意：通常来说，Cloudflare Pages会自动处理对根路径的请求并提供public/index.html
+  // 这个函数只是作为备用，以防直接访问了由Functions处理的非API路径
+  return new Response(null, {
+    status: 302, // 临时重定向
     headers: {
-      'Content-Type': 'text/html;charset=UTF-8',
-      'Cache-Control': 'public, max-age=600' // Cache for 10 minutes
+      'Location': '/',
+      'Cache-Control': 'no-cache'
     }
   });
 }
@@ -18,13 +21,18 @@ export async function handleAppRequest(context) {
 /**
  * 处理管理页面请求 (认证后)
  * @param {Object} context - 请求上下文
- * @returns {Response} - HTML响应 (通常也是 index.html，由前端JS处理管理面板)
+ * @returns {Response} - HTML响应
  */
 export async function handleAdminRequest(context) {
   // Authentication should have been handled before calling this function.
-  // This simply serves the main application HTML, and client-side JavaScript
-  // will handle rendering the admin panel based on authentication state.
-  return handleAppRequest(context);
+  // 重定向到根目录，让前端JS处理管理面板的渲染
+  return new Response(null, {
+    status: 302, // 临时重定向
+    headers: {
+      'Location': '/#admin',
+      'Cache-Control': 'no-cache'
+    }
+  });
 }
 
 /**
@@ -42,8 +50,8 @@ export async function handleAssetRequest(context) {
   // you would implement that logic here.
   // For now, as a fallback, we'll return a 404.
   console.warn(`Asset request for "${context.path}" reached _worker.js. Ensure static assets are correctly deployed or handled.`);
-  return new Response('资源不存在 (Asset not found via Function)', { 
-    status: 404, 
-    headers: { 'Content-Type': 'text/plain;charset=UTF-8' } 
+  return new Response('资源不存在 (Asset not found via Function)', {
+    status: 404,
+    headers: { 'Content-Type': 'text/plain;charset=UTF-8' }
   });
 }

@@ -1,13 +1,12 @@
 # 安全管理交互学习平台 - Cloudflare Pages 部署指南
 
-本项目包含一个 Cloudflare Worker 的模块化版本，用于驱动"安全管理交互学习平台"的前后端逻辑，并通过 Cloudflare Pages 进行部署。
+本项目包含一个 Cloudflare Pages 应用，结合静态HTML和Functions API，用于驱动"安全管理交互学习平台"的前后端逻辑。
 
 ## 项目结构
 .
 ├── functions/                  # Cloudflare Pages Functions 目录
-│   ├── _worker.js              # Functions 入口文件，处理所有请求
-│   ├── htmlContent.js          # 存储主 HTML 内容的模块
-│   ├── router.js               # API 和页面请求的路由逻辑 (用于非API请求)
+│   ├── _worker.js              # Functions 入口文件，处理非静态请求
+│   ├── router.js               # 页面请求的路由逻辑 (用于非API请求)
 │   ├── api/                    # Pages Functions 路由文件目录
 │   │   ├── visit.js            # /api/visit 端点的路由处理
 │   │   ├── stats.js            # /api/stats 端点的路由处理
@@ -26,10 +25,12 @@
 │   │   │   ├── statsApi.js     # 统计数据相关请求的逻辑实现
 │   │   │   ├── videoApi.js     # 视频相关请求的逻辑实现
 │   │   │   └── visitApi.js     # 访问统计相关请求的逻辑实现
-│   │   └── pageHandlers.js     # 页面请求处理器 (如 /admin, /)
+│   │   └── pageHandlers.js     # 页面请求处理器 (重定向处理)
 │   └── services/               # 服务模块 (如认证、KV操作)
 │       ├── authService.js      # 认证服务
 │       └── kvService.js        # KV存储服务
+├── public/                     # 静态资源目录
+│   └── index.html              # 主HTML文件，包含前端代码
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml          # GitHub Actions 自动化部署配置文件
@@ -37,42 +38,48 @@
 
 
 **说明:**
-* `functions/` 目录下的所有 `.js` 文件构成了 Cloudflare Function。
-* `_worker.js` 是 Cloudflare Pages Functions 的默认入口点，它会处理所有非API请求。
-* `api/` 目录中的文件按照 Cloudflare Pages Functions 的路由约定，处理 API 路由的匹配、方法验证、认证和CORS配置。
-* `handlers/api/` 目录中的文件包含 API 请求的具体业务逻辑实现，被 `api/` 目录中的路由文件调用。
-* `htmlContent.js` 目前用于存储和导出嵌入在 Worker 中的 `INDEX_HTML`。
+* `public/` 目录包含静态HTML和前端资源，Cloudflare Pages会自动提供这些内容
+* `functions/` 目录下的所有 `.js` 文件构成了 Cloudflare Functions，处理API请求和特殊路由
+* `_worker.js` 是 Cloudflare Pages Functions 的默认入口点，它会处理所有未被静态资源匹配的请求
+* `api/` 目录中的文件按照 Cloudflare Pages Functions 的路由约定，处理 API 路由的匹配、方法验证、认证和CORS配置
+* `handlers/api/` 目录中的文件包含 API 请求的具体业务逻辑实现，被 `api/` 目录中的路由文件调用
 
 ## 架构说明
 
-本项目采用分层架构设计：
+本项目采用前后端分离的架构设计：
 
-1. **路由层** (`functions/api/` 目录)：
-   - 负责处理 HTTP 请求的路由匹配
-   - 处理身份认证逻辑
-   - 验证 HTTP 方法（GET、POST 等）
-   - 配置 CORS 响应头
-   - 将请求转发给处理器层
+1. **前端** (`public/index.html`):
+   - 包含所有HTML、CSS和JavaScript代码
+   - 提供用户界面和交互逻辑
+   - 通过浏览器端JavaScript与API交互
 
-2. **处理器层** (`functions/handlers/api/` 目录)：
-   - 实现具体的业务逻辑
-   - 处理数据验证和转换
-   - 与 KV 存储服务交互
-   - 构建响应数据
+2. **API层** (分为路由层和处理器层):
+   - **路由层** (`functions/api/` 目录)：
+     - 负责处理 HTTP 请求的路由匹配
+     - 处理身份认证逻辑
+     - 验证 HTTP 方法（GET、POST 等）
+     - 配置 CORS 响应头
+     - 将请求转发给处理器层
+
+   - **处理器层** (`functions/handlers/api/` 目录)：
+     - 实现具体的业务逻辑
+     - 处理数据验证和转换
+     - 与 KV 存储服务交互
+     - 构建响应数据
 
 3. **服务层** (`functions/services/` 目录)：
    - 提供共享的功能服务
    - 封装 KV 存储操作
    - 提供认证和授权功能
 
-这种分层设计使代码结构更加清晰，便于维护和扩展。
+这种架构设计使前端和后端逻辑清晰分离，同时保持代码结构的清晰和可维护性。
 
 ## 部署到 Cloudflare Pages
 
 ### 1. 准备 GitHub 仓库
 
 1.  确保你有一个 GitHub 仓库。
-2.  将本项目的所有文件（`functions` 目录, `.github` 目录, `README.md` 等）推送到你的仓库。
+2.  将本项目的所有文件（`functions` 目录, `public` 目录, `.github` 目录, `README.md` 等）推送到你的仓库。
 
 ### 2. 连接到 Cloudflare Pages
 
@@ -83,8 +90,8 @@
 5.  **生产分支**：选择你的主分支（通常是 `main` 或 `master`）。
 6.  **构建设置**：
     * **框架预设 (Framework preset)**：选择 `None`。
-    * **构建命令 (Build command)**：留空或根据你的项目需求（如果未来有构建步骤）。
-    * **构建输出目录 (Build output directory)**：留空或设为 `/`，因为我们使用 Functions 提供所有内容。
+    * **构建命令 (Build command)**：留空，因为我们不需要构建步骤。
+    * **构建输出目录 (Build output directory)**：设为 `public`，指定静态文件的目录。
     * **根目录 (Root Directory)**: 保持默认 `/` 即可。
 7.  **环境变量 (Environment variables)**：暂时不需要在这里设置 Worker 相关的环境变量，KV 绑定将在下一步进行。
 8.  点击 **Save and Deploy**。
@@ -144,21 +151,17 @@
 2.  登录 Wrangler: `wrangler login`
 3.  在项目根目录下运行本地开发服务器：
     ```bash
-    wrangler pages dev --kv SAFETY_CONTENT --kv SAFETY_STATS --kv SAFETY_ADMIN --port 8788
+    wrangler pages dev public --kv SAFETY_CONTENT --kv SAFETY_STATS --kv SAFETY_ADMIN --port 8788
     ```
 
-    或者，直接运行：
-    ```bash
-    wrangler dev functions/_worker.js --kv SAFETY_CONTENT --kv SAFETY_STATS --kv SAFETY_ADMIN --local --port 8788
-    ```
-    这会直接运行 `_worker.js`。访问 `http://localhost:8788`。
+    这将同时提供静态文件和API功能。访问 `http://localhost:8788`。
 
 ## 注意事项
 
 * **安全性**: 当前管理员密码验证是明文比较，这非常不安全。在生产环境中，应使用密码哈希和安全的比较方法。Token 的管理也应遵循安全最佳实践。
 * **错误处理**: Worker 代码中的错误处理可以进一步增强。
 * **CORS**: `Access-Control-Allow-Origin: '*'` 应谨慎使用，最好替换为你的实际前端域名。
-* **部署结构**: 请确保项目中没有 `public/index.html` 文件或者 `public/` 目录为空，因为 Cloudflare Pages 会优先提供 `public` 目录下的静态文件，这会覆盖我们的 Functions 代码所提供的内容。
+* **构建设置**: 确保在Cloudflare Pages构建设置中将"构建输出目录"设置为`public`，这样Cloudflare Pages才能正确提供静态HTML文件。
 
 ## API 路由结构
 
@@ -183,9 +186,9 @@
 
 如果部署后网站只显示导航栏和底部信息，但内容区域为空，检查：
 
-1. 确保项目根目录下没有 `public/index.html` 文件或者该文件已删除，因为它会优先于Functions代码提供给用户。
-2. 检查Cloudflare Pages的部署设置，确保构建输出目录设置正确。
-3. 确认KV绑定已正确配置，因为网站内容可能依赖于KV存储的数据。
+1. 确保构建输出目录设置为 `public`，这样Cloudflare Pages才能提供正确的静态文件。
+2. 确认KV绑定已正确配置，因为网站内容可能依赖于KV存储的数据。
+3. 检查浏览器控制台是否有任何JavaScript错误或网络请求失败。
 
 ### API请求返回405错误
 
