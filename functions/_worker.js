@@ -36,7 +36,14 @@ export async function onRequest(context) {
       return await handleAssetRequest(requestContext);
     }
 
-    // 4. 主应用请求（默认返回主HTML）
+    // 4. 主应用请求（根路径直接返回index.html内容）
+    if (path === '/' || path === '') {
+      // 对于根路径请求，直接返回内容而不重定向
+      // /routes/index.js 或特定路由文件会处理这个请求
+      return; // 允许 /routes/index.js 处理
+    }
+
+    // 5. 其他页面请求
     return await handleAppRequest(requestContext);
 
   } catch (error) {
